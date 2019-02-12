@@ -10,6 +10,7 @@
 #############################################################
 
 from collections import defaultdict
+import numpy as np
 import gzip
 
 #### 1. Evaluation Metrics ####
@@ -92,8 +93,12 @@ def all_complex_feature(words):
 def all_complex(data_file):
     ## YOUR CODE HERE...
     words, labels = load_file(data_file)
-
+    preds = np.ones_like(labels)
+    precision = get_precision(preds,labels)
+    recall = get_recall(preds, labels)
+    fscore = get_fscore(preds, labels)
     performance = [precision, recall, fscore]
+
     return performance
 
 
