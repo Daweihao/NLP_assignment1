@@ -86,7 +86,7 @@ def load_file(data_file):
     return words, labels
 
 ### 2.1: A very simple baseline
-
+# predict fscore = 0.5895627644569816
 ## Makes feature matrix for all complex
 def all_complex_feature(words):
     return [1 for i in range(len(words))] 
@@ -106,10 +106,10 @@ def all_complex(data_file):
 
 
 ### 2.2: Word length thresholding
-
+# predict fscore = 0.712598 
 ## Makes feature matrix for word_length_threshold
 def length_threshold_feature(words, threshold):
-    return [1 if len(word[i])>= threshold else 0 for i in range(len(words))]
+    return [1 if len(i)>= threshold else 0 for i in words]
 
 ## Finds the best length threshold by f-score, and uses this threshold to
 ## classify the training and development set
@@ -139,7 +139,7 @@ def word_length_threshold(training_file, development_file):
 ## Loads Google NGram counts
 def load_ngram_counts(ngram_counts_file): 
    counts = defaultdict(int) 
-   with gzip.open(ngram_counts_file, 'rt') as f: 
+   with gzip.open(ngram_counts_file, 'rt', encoding="utf8") as f: 
        for line in f:
            token, count = line.strip().split('\t') 
            if token[0].islower(): 
@@ -203,7 +203,7 @@ def word_frequency_threshold(training_file, development_file, counts):
     return training_performance, development_performance
 
 ### 2.4: Naive Bayes
-        
+# predict fscore : 0.6304176516942475        
 ## Trains a Naive Bayes classifier using length and frequency features
 def naive_bayes(training_file, development_file, counts):
     ## YOUR CODE HERE
@@ -241,10 +241,39 @@ def naive_bayes(training_file, development_file, counts):
     return training_performance,development_performance
 
 ### 2.5: Logistic Regression
-
+# fscore : 0.6816693944353518
 ## Trains a Naive Bayes classifier using length and frequency features
 def logistic_regression(training_file, development_file, counts):
     ## YOUR CODE HERE    
+    twords, tlabels = load_file(training_file)
+    dwords, dlabels = load_file(development_file)
+    tlength = [ 0 if len(word) == None else len(word)for word in twords]
+    dlength = [ 0 if len(word) == None else len(word)for word in dwords]
+    tfreq = [ 0 if counts.get(w) == None else counts.get(w) for w in twords]
+    dfreq = [ 0 if counts.get(w) == None else counts.get(w) for w in dwords]
+    
+    tl = np.array(tlength)
+    meanl = np.mean(tl)
+    stdl  = np.std(tl)
+    tl_scale = [(l - meanl)/stdl for l in tl]
+    dl = np.array(dlength)
+    dl_scale = [(l - meanl)/stdl for l in dl]
+    tf = np.array(tfreq)
+    meanf = np.mean(tf)
+    stdf = np.std(tf)
+    tf_scale = [(f - meanf)/stdf for f in tf]
+    df = np.array(dfreq)
+    df_scale = [(f - meanf)/stdf for f in df]
+    X_train = np.matrix([tl_scale,tf_scale]).T
+    X_test = np.matrix([dl_scale,df_scale]).T
+    Y = tlabels
+    
+    lr = LogisticRegression(C=1000.0, random_state=0, solver='liblinear')
+    lr.fit(X_train,Y)
+    tpred = lr.predict(X_train)
+    dpred = lr.predict(X_test)
+    tprecision,trecall,tfscore = get_precision(tpred,tlabels),get_recall(tpred,tlabels),get_fscore(tpred,tlabels)
+    dprecision,drecall,dfscore = get_precision(dpred,dlabels),get_recall(dpred,dlabels),get_fscore(dpred,dlabels)
     training_performance = (tprecision, trecall, tfscore)
     development_performance = (dprecision, drecall, dfscore)
     return development_performance
