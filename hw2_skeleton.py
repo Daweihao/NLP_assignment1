@@ -10,6 +10,7 @@
 #############################################################
 
 from collections import defaultdict
+from sklearn.naive_bayes import GaussianNB
 import numpy as np
 import gzip
 
@@ -206,9 +207,38 @@ def word_frequency_threshold(training_file, development_file, counts):
 ## Trains a Naive Bayes classifier using length and frequency features
 def naive_bayes(training_file, development_file, counts):
     ## YOUR CODE HERE
+
+    twords, tlabels = load_file(training_file)
+    dwords, dlabels = load_file(development_file)
+    tlength = [ 0 if len(word) == None else len(word)for word in twords]
+    dlength = [ 0 if len(word) == None else len(word)for word in dwords]
+    tfreq = [ 0 if counts.get(w) == None else counts.get(w) for w in twords]
+    dfreq = [ 0 if counts.get(w) == None else counts.get(w) for w in dwords]
+    
+    tl = np.array(tlength)
+    meanl = np.mean(tl)
+    stdl  = np.std(tl)
+    tl_scale = [(l - meanl)/stdl for l in tl]
+    dl = np.array(dlength)
+    dl_scale = [(l - meanl)/stdl for l in dl]
+    tf = np.array(tfreq)
+    meanf = np.mean(tf)
+    stdf = np.std(tf)
+    tf_scale = [(f - meanf)/stdf for f in tf]
+    df = np.array(dfreq)
+    df_scale = [(f - meanf)/stdf for f in df]
+    X_train = np.matrix([tl_scale,tf_scale]).T
+    X_test = np.matrix([dl_scale,df_scale]).T
+    Y = tlabels
+    clf = GaussianNB()
+    clf.fit(X_train, Y)
+    dpred = clf.predict(X_test)
+    tpred = clf.predict(X_train)
+    tprecision,trecall,tfscore = get_precision(tpred,tlabels),get_recall(tpred,tlabels),get_fscore(tpred,tlabels)
+    dprecision,drecall,dfscore = get_precision(dpred,dlabels),get_recall(dpred,dlabels),get_fscore(dpred,dlabels)
     training_performance = (tprecision, trecall, tfscore)
     development_performance = (dprecision, drecall, dfscore)
-    return development_performance
+    return training_performance,development_performance
 
 ### 2.5: Logistic Regression
 
