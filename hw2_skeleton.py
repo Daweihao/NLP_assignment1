@@ -88,12 +88,14 @@ def load_file(data_file):
 
 ## Makes feature matrix for all complex
 def all_complex_feature(words):
+    return [1 for i in range(len(words))] 
 
 ## Labels every word complex
 def all_complex(data_file):
     ## YOUR CODE HERE...
     words, labels = load_file(data_file)
-    preds = np.ones_like(labels)
+    #preds = np.ones_like(labels)
+    preds = all_complex_feature(words)
     precision = get_precision(preds,labels)
     recall = get_recall(preds, labels)
     fscore = get_fscore(preds, labels)
@@ -106,11 +108,27 @@ def all_complex(data_file):
 
 ## Makes feature matrix for word_length_threshold
 def length_threshold_feature(words, threshold):
+    return [1 if len(word[i])>= threshold else 0 for i in range(len(words))]
 
 ## Finds the best length threshold by f-score, and uses this threshold to
 ## classify the training and development set
 def word_length_threshold(training_file, development_file):
     ## YOUR CODE HERE
+    w_t, l_t = load_file(training_file)
+    w_d, l_d = load_file(development_file)
+    fscore_max_t = 0
+    threshold = 0
+    for i in range(20):
+       pred = length_threshold_feature(w_t,i)
+       fscore_t = get_fscore(pred,l_t)
+       if(fscore_t > fscore_max_t):
+           fscore_max_t = fscore_t
+           threshold = i
+    # threshold here is seven!
+    pred_d = length_threshold_feature(w_d, threshold)
+    pred_t = length_threshold_feature(w_t, threshold) 
+    tprecision,trecall,tfscore = get_precision(pred_t,l_t),get_recall(pred_t,l_t),get_fscore(pred_t,l_t)
+    dprecision,drecall,dfscore = get_precision(pred_d,l_d),get_recall(pred_d,l_d),get_fscore(pred_d,l_d)
     training_performance = [tprecision, trecall, tfscore]
     development_performance = [dprecision, drecall, dfscore]
     return training_performance, development_performance
@@ -130,11 +148,55 @@ def load_ngram_counts(ngram_counts_file):
 # Finds the best frequency threshold by f-score, and uses this threshold to
 ## classify the training and development set
 
+# helper function for Q2_c
+def find_max_frequency(counts, words):
+    max_freq = 0
+    for word in words:
+        if word in counts:
+            freq = counts.get(word)
+            max_freq = freq if freq > max_freq else max_freq
+    return max_freq
+
+def find_min_frequency(counts, words):
+    min_freq = 1000
+    for word in words:
+        if word in counts:
+            freq = counts.get(word)
+            min_freq = freq if freq < min_freq else min_freq
+    return min_freq
 ## Make feature matrix for word_frequency_threshold
 def frequency_threshold_feature(words, threshold, counts):
-
+    result = []
+    for i in range(len(words)):
+        wordFreq = counts.get(words[i].lower())
+        if wordFreq is None:
+            result.append(1)
+        elif wordFreq <= threshold:
+            result.append(1)
+        elif wordFreq > threshold:
+            result.append(0)
+    return  result
 def word_frequency_threshold(training_file, development_file, counts):
     ## YOUR CODE HERE
+    twords, tlabels = load_file(training_file)
+    dwords, dlabels = load_file(development_file)
+    max_in_t = find_max_frequency(counts, twords)
+    max_in_d = find_max_frequency(counts, dwords)
+    min_in_t = find_min_frequency(counts, twords)
+    fscore_max = 0
+    freq = 0
+    for i in range(min_in_t, max_in_t + 1):
+        preds = frequency_threshold_feature(twords,i, counts)
+        fscore = get_fscore(preds, tlabels)
+        fscore_max,freq = (fscore,i) if fscore > fscore_max else (fscore_max,freq)
+
+    print("best freqency %d"% freq)
+    dpred = frequency_threshold_feature(dwords, freq, counts)
+    tpred = frequency_threshold_feature(twords, freq,counts)
+
+    dprecision,drecall,dfscore = get_precision(dpred,dlabels),get_recall(dpred,dlabels),get_fscore(dpred,dlabels)
+    tprecision,trecall,tfscore = get_precision(tpred,tlabels),get_recall(tpred,tlabels),get_fscore(tpred,tlabels)
+
     training_performance = [tprecision, trecall, tfscore]
     development_performance = [dprecision, drecall, dfscore]
     return training_performance, development_performance
