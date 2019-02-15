@@ -11,8 +11,15 @@
 
 from collections import defaultdict
 from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn import metrics
+from sklearn.model_selection import cross_validate
+from nltk.corpus import wordnet
 import numpy as np
 import gzip
+import syllables
 
 #### 1. Evaluation Metrics ####
 
@@ -84,6 +91,17 @@ def load_file(data_file):
                 labels.append(int(line_split[1]))
             i += 1
     return words, labels
+
+def load_test(test):
+    words = []
+    with open(test, 'rt', encoding="utf8") as f:
+        i = 0
+        for line in f:
+            if i > 0:
+                line_split = line[:-1].split("\t")
+                words.append(line_split[0].lower())
+            i += 1
+    return words
 
 ### 2.1: A very simple baseline
 # predict fscore = 0.5895627644569816
@@ -276,13 +294,61 @@ def logistic_regression(training_file, development_file, counts):
     dprecision,drecall,dfscore = get_precision(dpred,dlabels),get_recall(dpred,dlabels),get_fscore(dpred,dlabels)
     training_performance = (tprecision, trecall, tfscore)
     development_performance = (dprecision, drecall, dfscore)
-    return development_performance
+    return training_performance, development_performance
 
 ### 2.7: Build your own classifier
 
 ## Trains a classifier of your choosing, predicts labels for the test dataset
 ## and writes the predicted labels to the text file 'test_labels.txt',
 ## with ONE LABEL PER LINE
+def get_syns_nums(words):
+    syns = []
+    for word in words:
+        counts = 0
+        for each in wordnet.synsets(word):
+            counts += len(each.lemma_names())
+        syns.append(counts)
+    return syns
+
+def get_syllables(words):
+    return [syllables.count_syllables(word) for word in words]
+
+def get_senses(words):
+    return [len(wordnet.synsets(word)) for word in words]
+
+def regularization(paras):
+    data = np.array(paras)
+    mean = np.mean(data)
+    std = np.std(data)
+    return [(each - mean)/std for each in data]
+
+def random_forest_classifier(training, develop,test):
+    twords, tlabels = load_file(training_file)
+    dwords, dlabels = load_file(development_file)
+    pwords= load_test(test)
+    total_words = twords + dwords
+    total_labels = tlabels + dlabels
+    syns = regularization(get_syns_nums(pwords))
+    syll = regularization(get_syllables(pwords))
+    sens = regularization(get_senses(pwords))
+    length = regularization([ 0 if len(word) == None else len(word)for word in pwords])
+    freq = regularization([ 0 if counts.get(w) == None else counts.get(w) for w in pwords])
+    syns_t = regularization(get_syns_nums(total_words))
+    syll_t = regularization(get_syllables(total_words))
+    sens_t = regularization(get_senses(total_words))
+    length_t = regularization([ 0 if len(word) == None else len(word)for word in total_words])
+    freq_t = regularization([ 0 if counts.get(w) == None else counts.get(w) for w in total_words])
+
+    X_train= np.matrix([length_t,freq_t,syns_t,syll_t,sens_t]).T
+    X_test= np.matrix([length,freq,syns,syll,sens]).T
+    rfc = RandomForestClassifier(n_estimators=400, max_depth=3, random_state=0, max_features=3,oob_score=True, min_samples_leaf=2, min_samples_split=7)
+    rfc.fit(X_train,total_labels)
+    tpred_rfc = rfc.predict(X_train)
+    print(get_fscore(tpred_rfc,total_labels))
+    # dpred_rfc = rfc.predict(X_test)
+    pred_rfc = rfc.predict(X_test)
+    results = np.array(pred_rfc).astype(np.int)
+    np.savetxt("test_labels.txt",results,fmt="%d")
 
 
 if __name__ == "__main__":
@@ -294,3 +360,5 @@ if __name__ == "__main__":
     
     ngram_counts_file = "ngram_counts.txt.gz"
     counts = load_ngram_counts(ngram_counts_file)
+    random_forest_classifier(training_file,development_file,test_file)
+    
