@@ -150,7 +150,7 @@ def word_length_threshold(training_file, development_file):
     dprecision,drecall,dfscore = get_precision(pred_d,l_d),get_recall(pred_d,l_d),get_fscore(pred_d,l_d)
     training_performance = [tprecision, trecall, tfscore]
     development_performance = [dprecision, drecall, dfscore]
-    return training_performance, development_performance
+    return (training_performance, development_performance)
 
 ### 2.3: Word frequency thresholding
 
@@ -184,7 +184,7 @@ def find_min_frequency(counts, words):
             min_freq = freq if freq < min_freq else min_freq
     return min_freq
 ## Make feature matrix for word_frequency_threshold
-def frequency_threshold_feature(words, threshold, counts):
+def frequency_threshold_feature(words,threshold, counts):
     result = []
     for i in range(len(words)):
         wordFreq = counts.get(words[i].lower())
@@ -196,26 +196,27 @@ def frequency_threshold_feature(words, threshold, counts):
             result.append(0)
     return  result
 def word_frequency_threshold(training_file, development_file, counts):
-    ## YOUR CODE HERE
+    
     twords, tlabels = load_file(training_file)
     dwords, dlabels = load_file(development_file)
-    max_in_t = find_max_frequency(counts, twords)
-    max_in_d = find_max_frequency(counts, dwords)
-    min_in_t = find_min_frequency(counts, twords)
-    fscore_max = 0
-    freq = 0
-    for i in range(min_in_t, max_in_t + 1):
-        preds = frequency_threshold_feature(twords,i, counts)
-        fscore = get_fscore(preds, tlabels)
-        fscore_max,freq = (fscore,i) if fscore > fscore_max else (fscore_max,freq)
-
-    print("best freqency %d"% freq)
+    # max_in_t = find_max_frequency(counts, twords)
+    # max_in_d = find_max_frequency(counts, dwords)
+    # min_in_t = find_min_frequency(counts, twords)
+    # fscore_max = 0
+    # freq = 0
+#     for i in range(100000, 200000000 + 10,2000):
+    preds = frequency_threshold_feature(twords,25000000, counts)
+    fscore = get_fscore(preds, tlabels)
+    # fscore_max,freq = (fscore,(25000000)) if fscore > fscore_max else (fscore_max,freq)
+    freq = 25000000
+    
+    # print("best freqency %d"% freq)
     dpred = frequency_threshold_feature(dwords, freq, counts)
     tpred = frequency_threshold_feature(twords, freq,counts)
-
+    
     dprecision,drecall,dfscore = get_precision(dpred,dlabels),get_recall(dpred,dlabels),get_fscore(dpred,dlabels)
     tprecision,trecall,tfscore = get_precision(tpred,tlabels),get_recall(tpred,tlabels),get_fscore(tpred,tlabels)
-
+    
     training_performance = [tprecision, trecall, tfscore]
     development_performance = [dprecision, drecall, dfscore]
     return training_performance, development_performance
@@ -294,7 +295,7 @@ def logistic_regression(training_file, development_file, counts):
     dprecision,drecall,dfscore = get_precision(dpred,dlabels),get_recall(dpred,dlabels),get_fscore(dpred,dlabels)
     training_performance = (tprecision, trecall, tfscore)
     development_performance = (dprecision, drecall, dfscore)
-    return training_performance, development_performance
+    return (training_performance, development_performance)
 
 ### 2.7: Build your own classifier
 
@@ -360,5 +361,16 @@ if __name__ == "__main__":
     
     ngram_counts_file = "ngram_counts.txt.gz"
     counts = load_ngram_counts(ngram_counts_file)
-    random_forest_classifier(training_file,development_file,test_file)
+    print("Q2 (a) Training: %s "%all_complex(training_file))
+    print("\nQ2 (a) Development : %s " %all_complex(development_file))
+    print("\nQ2 (b) Training and Development:")
+    print(word_length_threshold(training_file,development_file),sep='\n')
+    print("\nQ2 (c) Training and development:")
+    print(word_frequency_threshold(training_file,development_file,counts),sep='\n')
+    print("\nQ3 naive bayes Training and development:")
+    print(naive_bayes(training_file,development_file,counts))
+    print("\nQ3 Logistic Regression:")
+    print(logistic_regression(training_file,development_file,counts),sep='\n')
+    print("\nQ4 Own claissifier")
+    # random_forest_classifier(training_file,development_file,test_file)
     
